@@ -61,11 +61,56 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const ul = document.createElement("ul");
     ul.className = "participants-list";
+    const activityName = container.closest('.activity-card')?.dataset.activity;
+
     participants.forEach((email) => {
       const li = document.createElement("li");
-      li.textContent = email;
+
+      const span = document.createElement("span");
+      span.className = 'participant-email';
+      span.textContent = email;
+
+      const btn = document.createElement("button");
+      btn.className = "delete-participant";
+      btn.type = "button";
+      btn.title = "Unregister participant";
+      btn.setAttribute('aria-label', `Unregister ${email}`);
+      btn.textContent = "✖";
+
+      btn.addEventListener("click", async () => {
+        if (!activityName) return;
+        showMessage(`Unregistering ${email}...`, "info");
+        try {
+          const res = await fetch(
+            `/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`,
+            { method: "POST" }
+          );
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showMessage(err.detail || `Failed to unregister ${email}.`, "error");
+            return;
+          }
+
+          // update local data and UI
+          if (activities[activityName] && activities[activityName].participants) {
+            activities[activityName].participants = activities[activityName].participants.filter(
+              (p) => p.toLowerCase() !== email.toLowerCase()
+            );
+            updateActivityCard(activityName);
+            showMessage(`Unregistered ${email} from ${activityName}`, "success");
+          }
+        } catch (err) {
+          showMessage(`Network error while unregistering ${email}.`, "error");
+          console.error("Error unregistering:", err);
+        }
+      });
+
+      li.appendChild(span);
+      li.appendChild(btn);
       ul.appendChild(li);
     });
+
     container.appendChild(ul);
   }
 
